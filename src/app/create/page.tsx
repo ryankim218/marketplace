@@ -10,7 +10,9 @@ export default function CreatePage() {
           <p className="px-3 py-2">Seller help</p>
         </nav>
       </aside>
-      <div className="min-w-0 flex-1 px-4 py-7 sm:px-6"><CreateListingForm /></div>
+      <div className="min-w-0 flex-1 px-4 py-7 sm:px-6">
+        <CreateListingForm />
+      </div>
     </main>
   );
 }

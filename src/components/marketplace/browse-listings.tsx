@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { CATEGORIES } from "@/lib/categories";
 import type { Listing } from "@/types/marketplace";
 import { ListingGrid } from "./listing-grid";
@@ -10,9 +10,18 @@ import { Input } from "@/components/ui/input";
 export function BrowseListings() {
   const [category, setCategory] = useState("All");
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const timeout = window.setTimeout(
+      () => setDebouncedQuery(query.trim().replace(/\s+/g, " ")),
+      300,
+    );
+    return () => window.clearTimeout(timeout);
+  }, [query]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -20,7 +29,7 @@ export function BrowseListings() {
     try {
       const params = new URLSearchParams();
       if (category !== "All") params.set("category", category);
-      if (query.trim()) params.set("q", query.trim());
+      if (debouncedQuery) params.set("q", debouncedQuery);
       const response = await fetch(`/api/listings?${params}`, {
         cache: "no-store",
       });
@@ -35,7 +44,7 @@ export function BrowseListings() {
     } finally {
       setLoading(false);
     }
-  }, [category, query]);
+  }, [category, debouncedQuery]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -44,18 +53,39 @@ export function BrowseListings() {
     return () => window.clearTimeout(timeout);
   }, [load]);
 
+  function searchField(className = "") {
+    return (
+      <div className={`relative ${className}`}>
+        <Search
+          className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+          aria-hidden="true"
+        />
+        <Input
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search listings"
+          aria-label="Search listings by title or description"
+          className={`h-9 rounded-full pl-9 ${query ? "pr-9" : ""}`}
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => setQuery("")}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-500 hover:bg-slate-200"
+            aria-label="Clear search"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <main className="mx-auto flex w-full max-w-[1280px] flex-1">
       <aside className="hidden w-[190px] shrink-0 border-r border-slate-200/60 px-4 py-7 md:block">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search"
-            className="h-9 rounded-full pl-9"
-          />
-        </div>
+        {searchField()}
         <h2 className="mt-7 text-[17px] font-black">Categories</h2>
         <nav className="mt-3 space-y-0.5" aria-label="Listing categories">
           {["All", ...CATEGORIES].map((item) => (
@@ -74,6 +104,7 @@ export function BrowseListings() {
         <h1 className="mb-5 text-[21px] font-black">
           {category === "All" ? "Today's picks" : category}
         </h1>
+        <div className="mb-4 md:hidden">{searchField()}</div>
         <nav
           className="mb-5 flex gap-2 overflow-x-auto md:hidden"
           aria-label="Listing categories"
@@ -109,8 +140,35 @@ export function BrowseListings() {
               Try again
             </button>
           </div>
+        ) : listings.length ? (
+          <>
+            <p
+              className="mb-3 text-xs font-semibold text-slate-500"
+              aria-live="polite"
+            >
+              {listings.length} {listings.length === 1 ? "listing" : "listings"}{" "}
+              found
+            </p>
+            <ListingGrid listings={listings} />
+          </>
         ) : (
-          <ListingGrid listings={listings} />
+          <div className="rounded-xl border-2 border-dashed border-slate-300 bg-white p-8 text-center">
+            <h2 className="font-black">No matching items found</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              {debouncedQuery
+                ? `No listings match “${debouncedQuery}”${category !== "All" ? ` in ${category}` : ""}.`
+                : `There are no listings in ${category} yet.`}
+            </p>
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                className="mt-4 rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-white"
+              >
+                Clear search
+              </button>
+            )}
+          </div>
         )}
       </section>
     </main>

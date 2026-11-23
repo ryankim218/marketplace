@@ -1,22 +1,28 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export function MessageSellerForm({ listingId }: { listingId: string }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
+  const [notificationStatus, setNotificationStatus] = useState("");
+  const submittingRef = useRef(false);
+  const submissionIdRef = useRef<string | null>(null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (submitting) return;
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setSubmitting(true);
     setError("");
-    setSuccess(false);
-    const form = new FormData(event.currentTarget);
+    setNotificationStatus("");
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const buyerEmail = String(form.get("buyer_email") || "").trim();
     const message = String(form.get("message") || "").trim();
+    submissionIdRef.current ??= crypto.randomUUID();
     try {
       const response = await fetch("/api/messages", {
         method: "POST",
@@ -25,30 +31,27 @@ export function MessageSellerForm({ listingId }: { listingId: string }) {
           listing_id: listingId,
           buyer_email: buyerEmail,
           message,
+          submission_id: submissionIdRef.current,
         }),
       });
       const data = await response.json();
       if (!response.ok)
         throw new Error(data.error || "Could not send message.");
-      setSuccess(true);
-      event.currentTarget.reset();
+      formElement.reset();
+      setNotificationStatus(data.notificationStatus || "sent");
+      submissionIdRef.current = null;
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Could not send message.",
       );
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   }
 
   return (
-    <form
-      onSubmit={(event) => {
-        setSubmitting(true);
-        submit(event);
-      }}
-      className="mt-2 space-y-3"
-    >
+    <form onSubmit={submit} className="mt-2 space-y-3">
       <div>
         <label htmlFor="buyer_email" className="sr-only">
           Your email
@@ -84,12 +87,16 @@ export function MessageSellerForm({ listingId }: { listingId: string }) {
           {error}
         </p>
       )}
-      {success && (
+      {notificationStatus && (
         <p
           role="status"
           className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700"
         >
-          Message sent successfully.
+          {notificationStatus === "sent"
+            ? "Your message was saved and the seller has been notified."
+            : notificationStatus === "duplicate"
+              ? "Your message was already saved. The seller notification may not have been sent."
+              : "Your message was saved, but we couldn't deliver an email notification to the seller."}
         </p>
       )}
       <Button

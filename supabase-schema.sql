@@ -17,8 +17,12 @@ create table if not exists messages (
   buyer_email varchar(255) not null,
   seller_email varchar(255) not null,
   message text not null,
+  submission_id uuid,
   created_at timestamptz default now()
 );
+
+alter table public.messages
+  add column if not exists submission_id uuid;
 
 insert into storage.buckets (id, name, public)
 values ('listing-images', 'listing-images', true)
@@ -27,6 +31,9 @@ on conflict (id) do update set public = true;
 create index if not exists idx_listings_category on listings(category);
 create index if not exists idx_listings_created_at on listings(created_at desc);
 create index if not exists idx_messages_listing_id on messages(listing_id);
+create unique index if not exists idx_messages_submission_id
+  on public.messages(submission_id)
+  where submission_id is not null;
 
 alter table listings enable row level security;
 alter table messages enable row level security;
