@@ -2,6 +2,39 @@ import { NextRequest, NextResponse } from "next/server";
 import { CATEGORIES } from "@/lib/categories";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { validateListing } from "@/lib/validations";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
+
+async function decorateListings(listings: Record<string, unknown>[]) {
+  const admin = getSupabaseAdmin();
+  if (!admin || !listings.length) {
+    return listings.map((listing) => ({
+      ...listing,
+      purchase_eligible: false,
+    }));
+  }
+  const emails = [
+    ...new Set(
+      listings
+        .map((listing) => String(listing.seller_email || "").trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  ];
+  const { data: sellers } = await admin
+    .from("seller_accounts")
+    .select("seller_email,charges_enabled,details_submitted")
+    .in("seller_email", emails);
+  const readyEmails = new Set(
+    (sellers || [])
+      .filter((seller) => seller.charges_enabled && seller.details_submitted)
+      .map((seller) => String(seller.seller_email).trim().toLowerCase()),
+  );
+  return listings.map((listing) => ({
+    ...listing,
+    purchase_eligible:
+      listing.status !== "sold" &&
+      readyEmails.has(String(listing.seller_email || "").trim().toLowerCase()),
+  }));
+}
 
 export async function GET(request: NextRequest) {
   const supabase = getServerSupabase();
@@ -52,11 +85,12 @@ export async function GET(request: NextRequest) {
         (listing) => [listing.id, listing],
       ),
     );
-    return NextResponse.json({
-      listings: [...listings.values()].sort(
+    const decorated = await decorateListings(
+      [...listings.values()].sort(
         (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at),
-      ),
-    });
+      ) as Record<string, unknown>[],
+    );
+    return NextResponse.json({ listings: decorated });
   }
 
   let requestQuery = supabase
@@ -68,7 +102,11 @@ export async function GET(request: NextRequest) {
   const { data, error } = await requestQuery;
   if (error)
     return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ listings: data || [] });
+  return NextResponse.json({
+    listings: await decorateListings(
+      (data || []) as unknown as Record<string, unknown>[],
+    ),
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -92,7 +130,7 @@ export async function POST(request: NextRequest) {
     description: String(body.description).trim(),
     price: Number(body.price),
     category: String(body.category),
-    seller_email: String(body.seller_email).trim(),
+    seller_email: String(body.seller_email).trim().toLowerCase(),
     image_url: String(body.image_url).trim(),
     location:
       typeof body.location === "string" && body.location.trim()

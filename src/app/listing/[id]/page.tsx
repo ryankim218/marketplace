@@ -3,7 +3,9 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 import { getServerSupabase } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { MessageSellerForm } from "@/components/marketplace/message-seller-form";
+import { BuyNowButton } from "@/components/marketplace/buy-now-button";
 
 export default async function ListingPage({
   params,
@@ -27,6 +29,20 @@ export default async function ListingPage({
     .eq("id", id)
     .maybeSingle();
   if (!listing) notFound();
+
+  const admin = getSupabaseAdmin();
+  let purchaseEligible = false;
+  if (admin) {
+    const { data: seller } = await admin
+      .from("seller_accounts")
+      .select("charges_enabled,details_submitted")
+      .eq("seller_email", String(listing.seller_email).trim().toLowerCase())
+      .maybeSingle();
+    purchaseEligible =
+      listing.status !== "sold" &&
+      seller?.charges_enabled === true &&
+      seller?.details_submitted === true;
+  }
 
   return (
     <main className="mx-auto w-full max-w-[1280px] flex-1 px-4 py-5 sm:px-6">
@@ -73,6 +89,11 @@ export default async function ListingPage({
           <p className="mt-1 break-all text-[14px] font-bold">
             {listing.seller_email}
           </p>
+          <BuyNowButton
+            listingId={listing.id}
+            eligible={purchaseEligible}
+            sold={listing.status === "sold"}
+          />
           <p className="mt-7 text-[15px] font-black">Send seller a message</p>
           <MessageSellerForm listingId={listing.id} />
         </aside>

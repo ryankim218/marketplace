@@ -19,13 +19,21 @@ export function SiteHeader() {
             Marketplace
           </span>
         </Link>
-        <Link
-          href="/create"
-          className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-lg border-2 border-slate-900 px-3 text-sm font-bold text-slate-900 transition hover:bg-slate-900 hover:text-white"
-        >
-          <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">Create listing</span>
-        </Link>
+        <nav className="ml-auto flex items-center gap-2" aria-label="Marketplace actions">
+          <Link
+            href="/connect-stripe"
+            className="hidden h-9 items-center rounded-lg border-2 border-slate-900 px-3 text-sm font-bold text-slate-900 transition hover:bg-slate-900 hover:text-white sm:inline-flex"
+          >
+            Connect Stripe
+          </Link>
+          <Link
+            href="/create"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg border-2 border-slate-900 px-3 text-sm font-bold text-slate-900 transition hover:bg-slate-900 hover:text-white"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Create listing</span>
+          </Link>
+        </nav>
       </div>
     </header>
   );
