@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Search, X } from "lucide-react";
 import { CATEGORIES } from "@/lib/categories";
 import type { Listing } from "@/types/marketplace";
-import { ListingGrid } from "./listing-grid";
+import { ListingGrid, ListingGridSkeleton } from "./listing-grid";
 import { Input } from "@/components/ui/input";
 
 export function BrowseListings() {
@@ -121,14 +121,7 @@ export function BrowseListings() {
           ))}
         </nav>
         {loading ? (
-          <div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {Array.from({ length: 10 }).map((_, index) => (
-              <div
-                key={index}
-                className="aspect-square animate-pulse rounded-[18px] border-2 border-slate-700 bg-slate-200"
-              />
-            ))}
-          </div>
+          <ListingGridSkeleton />
         ) : error ? (
           <div className="rounded-xl border-2 border-red-300 bg-red-50 p-6 text-center">
             <p className="text-sm text-red-700">{error}</p>
