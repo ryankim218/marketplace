@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Camera, Upload } from "lucide-react";
@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 
 export function CreateListingForm() {
   const router = useRouter();
+  const submissionInProgress = useRef(false);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState("");
   const [error, setError] = useState("");
@@ -35,7 +36,7 @@ export function CreateListingForm() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (submitting) return;
+    if (submissionInProgress.current) return;
     setError("");
     const form = new FormData(event.currentTarget);
     const title = String(form.get("title") || "").trim();
@@ -59,7 +60,9 @@ export function CreateListingForm() {
       return setError(
         "Supabase is not configured. Add the environment variables and try again.",
       );
+    submissionInProgress.current = true;
     setSubmitting(true);
+    let listingId: string;
     try {
       const extension =
         file.name
@@ -91,15 +94,16 @@ export function CreateListingForm() {
       const result = await response.json();
       if (!response.ok)
         throw new Error(result.error || "Could not create listing.");
-      router.push(`/listing/${result.listing.id}`);
-      router.refresh();
+      listingId = result.listing.id;
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Could not create listing.",
       );
-    } finally {
+      submissionInProgress.current = false;
       setSubmitting(false);
+      return;
     }
+    router.push(`/listing/${listingId}`);
   }
 
   return (
