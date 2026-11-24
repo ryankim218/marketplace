@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { getStripe } from "@/lib/stripe";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export default async function CheckoutSuccessPage({
@@ -11,19 +10,20 @@ export default async function CheckoutSuccessPage({
   let order: Record<string, unknown> | null = null;
 
   if (sessionId) {
-    try {
-      await getStripe().checkout.sessions.retrieve(sessionId);
-      const supabase = getSupabaseAdmin();
-      if (supabase) {
-        const { data } = await supabase
-          .from("orders")
-          .select("id,listing_id,buyer_email,seller_email,amount,currency,payment_status,paid_at")
-          .eq("checkout_session_id", sessionId)
-          .maybeSingle();
+    const supabase = getSupabaseAdmin();
+    if (!supabase) {
+      console.error("Supabase admin configuration is missing for checkout confirmation.");
+    } else {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id,listing_id,amount,currency,payment_status,paid_at")
+        .eq("checkout_session_id", sessionId)
+        .maybeSingle();
+      if (error) {
+        console.error("Could not retrieve checkout order.", { code: error.code });
+      } else {
         order = data;
       }
-    } catch {
-      order = null;
     }
   }
 

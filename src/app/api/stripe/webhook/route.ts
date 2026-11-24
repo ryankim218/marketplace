@@ -97,8 +97,13 @@ export async function POST(request: NextRequest) {
       : event.account || "";
 
   if (!listingId || !sellerEmail || !accountId) {
-    console.error("Checkout session is missing required payment metadata.");
-    return NextResponse.json({ received: true });
+    console.error("Checkout session is missing required payment metadata.", {
+      eventId: event.id,
+    });
+    return NextResponse.json(
+      { error: "Checkout session is missing required payment metadata." },
+      { status: 500 },
+    );
   }
 
   try {
@@ -133,15 +138,30 @@ export async function POST(request: NextRequest) {
       session.customer_email?.trim().toLowerCase() ||
       null;
 
-    const { data: seller } = await supabase
+    const { data: seller, error: sellerError } = await supabase
       .from("seller_accounts")
       .select("stripe_account_id,seller_email")
       .eq("stripe_account_id", accountId)
       .eq("seller_email", sellerEmail)
       .maybeSingle();
+    if (sellerError) {
+      console.error("Could not verify seller account for paid checkout.", {
+        code: sellerError.code,
+        eventId: event.id,
+      });
+      return NextResponse.json(
+        { error: "Could not verify the seller account." },
+        { status: 500 },
+      );
+    }
     if (!seller) {
-      console.error("Checkout payment references an unknown seller account.");
-      return NextResponse.json({ received: true });
+      console.error("Checkout payment references an unknown seller account.", {
+        eventId: event.id,
+      });
+      return NextResponse.json(
+        { error: "Could not match the paid checkout to a seller account." },
+        { status: 500 },
+      );
     }
 
     const { data: result, error } = await supabase.rpc(
@@ -168,7 +188,26 @@ export async function POST(request: NextRequest) {
     if (result === "missing_listing" || result === "seller_mismatch") {
       console.error("Checkout payment did not match a valid listing.", {
         result,
+        eventId: event.id,
       });
+      return NextResponse.json(
+        { error: "Paid checkout did not match a valid listing." },
+        { status: 500 },
+      );
+    }
+    if (
+      result !== "sold" &&
+      result !== "duplicate_event" &&
+      result !== "duplicate_checkout" &&
+      result !== "reconciliation_required"
+    ) {
+      console.error("Checkout payment returned an unexpected database result.", {
+        eventId: event.id,
+      });
+      return NextResponse.json(
+        { error: "Could not confirm the paid order." },
+        { status: 500 },
+      );
     }
     return NextResponse.json({ received: true, result });
   } catch (error) {
