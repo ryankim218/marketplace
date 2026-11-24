@@ -105,7 +105,7 @@ export function CreateListingForm() {
   return (
     <form
       onSubmit={submit}
-      className="grid gap-5 lg:grid-cols-[280px_minmax(280px,1fr)_220px]"
+      className="grid gap-5 lg:grid-cols-[280px_minmax(280px,1fr)]"
     >
       <div className="space-y-4">
         <label className="relative flex min-h-40 cursor-pointer items-center justify-center overflow-hidden rounded-[18px] border-2 border-slate-700 bg-slate-50">
@@ -232,37 +232,44 @@ export function CreateListingForm() {
           {submitting ? "Publishing..." : "Next"}
         </Button>
       </div>
-      <div className="relative min-h-[520px] overflow-hidden rounded-[22px] border-2 border-slate-700 bg-[#eaf3f8]">
-        {preview ? (
-          <Image
-            src={preview}
-            alt="Listing preview"
-            fill
-            unoptimized
-            className="object-contain"
-          />
-        ) : (
-          <span className="absolute left-1/2 top-6 -translate-x-1/2 text-sm font-black">
-            Preview
-          </span>
-        )}
-      </div>
-      <aside className="py-5">
-        <p className="text-[19px] font-black leading-tight">
-          {title || "Title"}
-          <br />
-          {price ? `$${price}` : "Price"}
-        </p>
-        <p className="mt-6 text-sm font-bold leading-5">
-          Listed 1 hour ago
-          <br />
-          in {location || "Palo Alto, CA"}
-        </p>
-        <p className="mt-8 text-[15px] font-black">Seller Information</p>
-        <p className="mt-2 text-sm font-bold break-all">
-          {sellerEmail || "Seller email"}
-        </p>
-      </aside>
+      <section className="h-fit overflow-hidden rounded-[22px] border-2 border-slate-700 bg-white">
+        <div className="relative aspect-[4/3] bg-[#eaf3f8]">
+          {preview ? (
+            <Image
+              src={preview}
+              alt="Listing preview"
+              fill
+              unoptimized
+              className="object-contain"
+            />
+          ) : (
+            <span className="absolute left-1/2 top-6 -translate-x-1/2 text-sm font-black">
+              Preview
+            </span>
+          )}
+        </div>
+        <div className="p-5">
+          <div className="flex items-start justify-between gap-4">
+            <h2 className="min-w-0 text-[19px] font-black leading-tight">
+              {title || "Title"}
+            </h2>
+            <p className="shrink-0 text-[19px] font-black">
+              {price ? `$${price}` : "Price"}
+            </p>
+          </div>
+          <p className="mt-3 text-sm font-bold leading-5">
+            Listed 1 hour ago
+            <br />
+            in {location || "Palo Alto, CA"}
+          </p>
+          <div className="mt-5 border-t border-slate-200 pt-4">
+            <p className="text-[15px] font-black">Seller Information</p>
+            <p className="mt-2 break-all text-sm font-bold">
+              {sellerEmail || "Seller email"}
+            </p>
+          </div>
+        </div>
+      </section>
     </form>
   );
 }
